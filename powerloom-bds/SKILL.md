@@ -30,17 +30,8 @@ This skill reads configuration from `memory/powerloom-bds.yml`. If the file does
 # memory/powerloom-bds.yml
 mode: whale-radar  # whale-radar | token-flow | pulse | defi-analyst
 
-pools:
-  - address: "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"
-    name: "USDC/WETH 0.05%"
-  - address: "0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8"
-    name: "USDC/WETH 0.3%"
-
 thresholds:
   whale_usd: 25000        # Minimum USD for whale alert
-  volume_spike_mult: 2.5  # Volume burst multiplier
-  price_move_pct: 0.4     # Price movement percentage
-  flow_imbalance_pct: 35  # Flow imbalance percentage
 
 # Pulse-specific (only used when mode: pulse)
 pulse:
@@ -52,6 +43,8 @@ analyst:
   report_cadence: hourly  # hourly | daily
   include_verification_probe: true
 ```
+
+**Note**: Whale-radar uses the `allTrades` endpoint which covers ALL indexed pools. No pool configuration needed.
 
 ## Steps
 
@@ -77,12 +70,14 @@ If the cache is empty or missing, log `POWERLOOM_BDS_CACHE_MISS` and end.
 
 #### Mode: whale-radar (default)
 
-For each pool in `pools`:
-1. Filter trades from cached snapshot where `usd_amount >= thresholds.whale_usd`
-2. For each whale trade:
-   - Extract: pool, token pair, amount, direction (buy/sell), tx hash
+The pre-fetched data (`/mpp/snapshot/allTrades/latest`) contains trades from ALL indexed Uniswap V3 pools. No pool filtering needed.
+
+1. Read cached snapshot from `.bds-cache/latest.json`
+2. Filter trades where `usd_amount >= thresholds.whale_usd`
+3. For each whale trade:
+   - Extract: pool address, token pair, amount, direction (buy/sell), tx hash
    - Extract: `verification.cid`, `verification.epoch`
-3. Format alert:
+4. Format alert:
    ```
    🐳 Whale alert: {token_in} → {token_out}  ${amount}
    

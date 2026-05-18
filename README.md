@@ -6,7 +6,7 @@ An [Aeon](https://github.com/aaronjmars/aeon) skill that fetches verified on-cha
 
 ## Features
 
-- **Whale Radar**: Alert on large swaps across Uniswap V3 pools
+- **Whale Radar**: Alert on large swaps across ALL indexed Uniswap V3 pools
 - **Token Flow**: Track multi-pool token movements
 - **Pulse**: Confluence signals (price + volume + flow) with cooldown
 - **DeFi Analyst**: Narrated market summaries with verification probes
@@ -23,7 +23,7 @@ cd aeon
 ### 2. Install this skill
 
 ```bash
-./add-skill powerloom/aeon-skills powerloom-bds
+./add-skill powerloom/aeon-skills powerloom-bds --force
 ```
 
 Or copy manually:
@@ -32,19 +32,22 @@ cp -r powerloom-bds skills/
 cp scripts/prefetch-bds.sh scripts/
 ```
 
-### 3. Configure
-
-Create `memory/powerloom-bds.yml`:
-```bash
-cp templates/powerloom-bds.yml.example memory/powerloom-bds.yml
-# Edit to set your pools and thresholds
-```
-
-### 4. Add GitHub secret
+### 3. Add GitHub secret
 
 1. Go to your fork's Settings → Secrets and variables → Actions
 2. Add `BDS_API_KEY` with your `sk_live_...` key
 3. Get your key at https://bds-metering.powerloom.io/metering
+
+### 4. Configure (optional)
+
+Create `memory/powerloom-bds.yml` to customize:
+```yaml
+mode: whale-radar
+thresholds:
+  whale_usd: 25000  # Minimum USD for whale alert
+```
+
+Default config is created automatically on first run.
 
 ### 5. Enable in aeon.yml
 
@@ -63,13 +66,11 @@ git commit -m "Add powerloom-bds skill"
 git push
 ```
 
-Run `./onboard --remote` to verify everything is wired up.
-
 ## Modes
 
 ### whale-radar (default)
 
-Alerts on whale swaps above threshold:
+Alerts on whale swaps across ALL indexed Uniswap V3 pools. Uses the `allTrades` endpoint — no pool configuration needed.
 
 ```
 🐳 Whale alert: WETH → USDC  $1,312,000
@@ -79,12 +80,12 @@ Epoch: 24785842
 Tx: 0xa1b2...
 ✅ Verified on-chain
    cid: bafkrei...
-   project: allTradesSnapshot:0x26c4...
+   project: allTradesSnapshot:0x4198...
 ```
 
 ### token-flow
 
-Tracks a token across all configured pools:
+Tracks a token across all pools:
 
 ```
 📊 Token Flow: USDC
@@ -120,30 +121,6 @@ Notable: 3 alerts this hour, largest $1.3M swap
 🔍 Verification probe: epoch 24785842 ✓
 ```
 
-## Configuration Reference
-
-```yaml
-mode: whale-radar  # whale-radar | token-flow | pulse | defi-analyst
-
-pools:
-  - address: "0x..."  # Uniswap V3 pool address
-    name: "Pool name"
-
-thresholds:
-  whale_usd: 25000        # Min USD for whale alert
-  volume_spike_mult: 2.5  # Volume burst multiplier
-  price_move_pct: 0.4     # Price movement %
-  flow_imbalance_pct: 35  # Flow imbalance %
-
-pulse:
-  window_minutes: 5
-  cooldown_minutes: 10
-
-analyst:
-  report_cadence: hourly
-  include_verification_probe: true
-```
-
 ## Verification
 
 Every alert includes a CID you can verify on-chain:
@@ -160,7 +137,6 @@ cast call 0xa1100CB00Acd3cA83a7C8F4DAA42701D1Eaf4A6c \
 ## Requirements
 
 - **BDS_API_KEY** — GitHub secret with your `sk_live_...` key
-- **Config file** — `memory/powerloom-bds.yml`
 - **Notification channels** — Set Telegram/Discord/Slack secrets in Aeon
 
 ## Credits

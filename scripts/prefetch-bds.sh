@@ -33,17 +33,8 @@ if [ ! -f "$CONFIG_FILE" ]; then
     cat > "$CONFIG_FILE" << 'EOF'
 mode: whale-radar
 
-pools:
-  - address: "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"
-    name: "USDC/WETH 0.05%"
-  - address: "0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8"
-    name: "USDC/WETH 0.3%"
-
 thresholds:
   whale_usd: 25000
-  volume_spike_mult: 2.5
-  price_move_pct: 0.4
-  flow_imbalance_pct: 35
 
 pulse:
   window_minutes: 5
