@@ -18,10 +18,12 @@ Get your API key at https://bds-metering.powerloom.io/metering
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /mpp/snapshot/allTrades/latest` | Latest trades across all pools |
-| `GET /mpp/snapshot/allTrades/{epoch}` | Trades for specific epoch |
+| `GET /mpp/snapshot/allTrades` | Latest trades across all pools (no path param) |
+| `GET /mpp/snapshot/allTrades/{epoch}` | Trades for specific epoch (integer block number) |
 | `GET /mpp/snapshot/trades/{pool}` | Trades for specific pool |
 | `GET /mpp/stream/allTrades` | SSE stream of all trades |
+
+**Note**: Use `/mpp/snapshot/allTrades` without any path parameter for latest. The `{block_number}` variant requires an integer epoch, not "latest".
 
 ### Token Data
 
