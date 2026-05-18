@@ -122,7 +122,7 @@ For a specific token (configured in `var` or memory file):
 
 For each formatted alert:
 1. Send via `./notify`
-2. Log to `memory/logs/${today}.md` under `### powerloom-bds`
+2. Log to memory/logs/${today}.md under `### powerloom-bds`
 
 ### 5. Update state
 
