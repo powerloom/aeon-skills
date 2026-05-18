@@ -22,16 +22,14 @@ cd aeon
 
 ### 2. Install this skill
 
-If this repo is published (e.g., `powerloom/aeon-skills`):
-
 ```bash
 ./add-skill powerloom/aeon-skills powerloom-bds
 ```
 
 Or copy manually:
 ```bash
-cp -r /path/to/powerloom-aeon-skill/skills/powerloom-bds skills/
-cp /path/to/powerloom-aeon-skill/scripts/prefetch-bds.sh scripts/
+cp -r powerloom-bds skills/
+cp scripts/prefetch-bds.sh scripts/
 ```
 
 ### 3. Configure
