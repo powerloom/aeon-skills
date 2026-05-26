@@ -1,15 +1,65 @@
 # Powerloom BDS — Aeon Skill
 
-An [Aeon](https://github.com/aaronjmars/aeon) skill that fetches verified on-chain data from [Powerloom BDS](https://docs.powerloom.io/agents-and-bds/quickstart) and dispatches actionable alerts.
+Canonical **skill package** for [Aeon](https://github.com/aaronjmars/aeon). Published as **`powerloom/aeon-skills`** on GitHub.
 
-**Every alert carries an on-chain verification CID** — the data is consensus-finalized by the DSV network, not trust-the-vendor.
+**Do not edit the fork copy (`anomit-aeon/skills/powerloom-bds`) as source of truth.** Change this repo, then re-install into your Aeon fork.
 
-## Features
+## Repo layout (what lives here)
 
-- **Whale Radar**: Alert on large swaps across ALL indexed Uniswap V3 pools
-- **Token Flow**: Track multi-pool token movements
-- **Pulse**: Confluence signals (price + volume + flow) with cooldown
-- **DeFi Analyst**: Narrated market summaries with verification probes
+```
+powerloom-aeon-skill/
+├── powerloom-bds/           # Skill tree (SKILL.md + references) — installed to skills/
+├── scripts/
+│   ├── prefetch-bds.sh      # Runs before Claude (network + secrets OK)
+│   ├── process-bds-skill.py # Deterministic whale-radar + epoch cursor
+│   └── postprocess-bds.sh   # Cursor backup after skill run
+├── templates/
+│   └── powerloom-bds.yml.example
+├── install-into-aeon.sh     # Copy skill + scripts into an Aeon fork
+└── README.md
+```
+
+## What stays in the Aeon fork (not this repo)
+
+| Path | Owner |
+|------|--------|
+| `aeon.yml` | Your fork — enable/disable schedule |
+| `memory/powerloom-bds-state.json` | Runtime state — committed by GH Actions |
+| `memory/powerloom-bds.yml` | Your operator config |
+| `.github/workflows/aeon.yml` | Upstream Aeon — optional fork patches only |
+| GitHub secret `BDS_API_KEY` | Your fork |
+
+## Install into an Aeon fork
+
+### Option A — install script (recommended)
+
+```bash
+cd /path/to/your-aeon-fork
+/path/to/powerloom-aeon-skill/install-into-aeon.sh
+```
+
+Copies **`powerloom-bds/` → `skills/powerloom-bds/`** and all **`scripts/*`** into the fork.
+
+### Option B — add-skill + manual scripts
+
+`./add-skill` only copies the skill directory — **not** the companion scripts.
+
+```bash
+./add-skill powerloom/aeon-skills powerloom-bds --force
+cp /path/to/powerloom-aeon-skill/scripts/prefetch-bds.sh scripts/
+cp /path/to/powerloom-aeon-skill/scripts/process-bds-skill.py scripts/
+cp /path/to/powerloom-aeon-skill/scripts/postprocess-bds.sh scripts/
+chmod +x scripts/prefetch-bds.sh scripts/postprocess-bds.sh
+```
+
+## How it runs (whale-radar)
+
+1. **`scripts/prefetch-bds.sh`** (before sandbox): read `lastStreamEpoch`, fetch `allTrades` from epoch+1, run processor
+2. **`scripts/process-bds-skill.py`**: dedupe, advance cursor, write `.bds-cache/alerts.json`
+3. **Claude reads `SKILL.md`**: dispatch `./notify` for each pre-built alert (no LLM state logic)
+4. **`scripts/postprocess-bds.sh`** (after sandbox): backup cursor from epoch cache
+
+OpenClaw parity: deterministic scripts own cursor + dedupe; the agent only dispatches.
 
 ## Quick Start
 
@@ -20,34 +70,23 @@ git clone https://github.com/aaronjmars/aeon
 cd aeon
 ```
 
-### 2. Install this skill
+### 2. Install this package
 
 ```bash
-./add-skill powerloom/aeon-skills powerloom-bds --force
-```
-
-Or copy manually:
-```bash
-cp -r powerloom-bds skills/
-cp scripts/prefetch-bds.sh scripts/
+git clone https://github.com/powerloom/aeon-skills /tmp/aeon-skills
+/tmp/aeon-skills/install-into-aeon.sh "$(pwd)"
 ```
 
 ### 3. Add GitHub secret
 
-1. Go to your fork's Settings → Secrets and variables → Actions
-2. Add `BDS_API_KEY` with your `sk_live_...` key
-3. Get your key at https://bds-metering.powerloom.io/metering
+1. Settings → Secrets → Actions → `BDS_API_KEY` = `sk_live_...`
+2. Get a key at https://bds-metering.powerloom.io/metering
 
 ### 4. Configure (optional)
 
-Create `memory/powerloom-bds.yml` to customize:
-```yaml
-mode: whale-radar
-thresholds:
-  whale_usd: 25000  # Minimum USD for whale alert
+```bash
+cp templates/powerloom-bds.yml.example memory/powerloom-bds.yml
 ```
-
-Default config is created automatically on first run.
 
 ### 5. Enable in aeon.yml
 
@@ -55,102 +94,37 @@ Default config is created automatically on first run.
 skills:
   powerloom-bds:
     enabled: true
-    schedule: "*/15 * * * *"  # Every 15 minutes
+    schedule: "*/15 * * * *"
 ```
 
-### 6. Push and verify
+### 6. Push
 
 ```bash
-git add .
-git commit -m "Add powerloom-bds skill"
+git add skills/powerloom-bds scripts/prefetch-bds.sh scripts/process-bds-skill.py scripts/postprocess-bds.sh
+git commit -m "Sync powerloom-bds skill from aeon-skills"
 git push
 ```
 
 ## Modes
 
-### whale-radar (default)
+| Mode | Aeon status |
+|------|-------------|
+| **whale-radar** | Shipped — deterministic prefetch processor |
+| token-flow | Use OpenClaw `token-flow.mjs` until ported |
+| pulse | Use `bds-agent trade` / OpenClaw `pulse.mjs` until ported |
+| defi-analyst | Not deterministic in prefetch yet |
 
-Alerts on whale swaps across ALL indexed Uniswap V3 pools. Uses the `allTrades` endpoint — no pool configuration needed.
+## Features
 
-```
-🐳 Whale alert: WETH → USDC  $1,312,000
-
-Pool: 0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640
-Epoch: 24785842
-Tx: 0xa1b2...
-✅ Verified on-chain
-   cid: bafkrei...
-   project: allTradesSnapshot:0x4198...
-```
-
-### token-flow
-
-Tracks a token across all pools:
-
-```
-📊 Token Flow: USDC
-
-Pool: USDC/WETH 0.05% — Net: +$125K (68% buy)
-Pool: USDC/WETH 0.3% — Net: -$42K (55% sell)
-Total: +$83K inflow across 2 pools
-```
-
-### pulse
-
-Confluence of signals → direction call:
-
-```
-⚡ PULSE: LONG WETH
-
-Signals: Price +0.5%, Volume 3.2×, Flow 62% buy
-Window: 5 min | Confidence: HIGH
-```
-
-### defi-analyst
-
-Narrated market summary:
-
-```
-📈 DeFi Brief — 2026-05-18 12:00 UTC
-
-ETH: $3,842 (+0.3%) | Gas: 25 gwei
-
-Top flows: USDC inflows to WETH pools, whale activity in 0.05% pool
-Notable: 3 alerts this hour, largest $1.3M swap
-
-🔍 Verification probe: epoch 24785842 ✓
-```
-
-## Verification
-
-Every alert includes a CID you can verify on-chain:
-
-```bash
-cast call 0xa1100CB00Acd3cA83a7C8F4DAA42701D1Eaf4A6c \
-  "maxSnapshotsCid(address,string,uint256)(string,uint8)" \
-  0x4198Bf81B55EE4Af6f9Ddc176F8021960813f641 \
-  "<projectId>" \
-  <epoch> \
-  --rpc-url https://rpc-v2.powerloom.network
-```
-
-## Requirements
-
-- **BDS_API_KEY** — GitHub secret with your `sk_live_...` key
-- **Notification channels** — Set Telegram/Discord/Slack secrets in Aeon
-
-## Credits
-
-BDS data is metered. Each request burns credits. Check your balance:
-- In response header: `X-BDS-Credit-Balance`
-- At https://bds-metering.powerloom.io/metering
-
-Sign up for free credits at the metering page. Paid plans available in POWER or USDC.
+- **Whale Radar**: Large swaps from `allTrades` snapshot with epoch cursor
+- **Verification**: CID in alerts when present in snapshot
+- **Credits**: `X-BDS-Credit-Balance` logged in prefetch
 
 ## Related
 
 - [Powerloom Docs](https://docs.powerloom.io/agents-and-bds/quickstart)
-- [bds-agent CLI](https://pypi.org/project/bds-agent/)
+- [bds-agent CLI](https://github.com/powerloom/bds-agent-py)
+- [OpenClaw skill](https://github.com/powerloom/powerloom-bds-univ3) — reference for token-flow / pulse scripts
 - [Aeon Framework](https://github.com/aaronjmars/aeon)
 
 ## License
