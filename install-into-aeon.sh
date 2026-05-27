@@ -32,7 +32,7 @@ mkdir -p "$AEON_ROOT/skills" "$AEON_ROOT/scripts"
 rm -rf "$AEON_ROOT/skills/powerloom-bds"
 cp -r "$SKILL_REPO/powerloom-bds" "$AEON_ROOT/skills/powerloom-bds"
 
-for script in prefetch-bds.sh fetch-bds-epochs.py bds_normalize.py process-bds-skill.py postprocess-bds.sh; do
+for script in prefetch-bds.sh fetch-bds-epochs.py bds_normalize.py bds_rate_limit.py process-bds-skill.py postprocess-bds.sh; do
   cp "$SKILL_REPO/scripts/$script" "$AEON_ROOT/scripts/$script"
   chmod +x "$AEON_ROOT/scripts/$script" 2>/dev/null || true
 done
@@ -40,6 +40,7 @@ done
 echo "Done."
 echo "  skills/powerloom-bds/SKILL.md"
 echo "  scripts/prefetch-bds.sh"
+echo "  scripts/bds_rate_limit.py"
 echo "  scripts/fetch-bds-epochs.py"
 echo "  scripts/bds_normalize.py"
 echo "  scripts/process-bds-skill.py"

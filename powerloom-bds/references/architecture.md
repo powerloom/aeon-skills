@@ -59,6 +59,8 @@ aeon.yml post-run                   deliver .pending-notify/ to Telegram
 
 **Do not use** query params on bare `/mpp/snapshot/allTrades` — `from_epoch` and `max_events` are **ignored** by the server.
 
+**404 on `{block}`:** Within ~5 blocks of BDS tip → epoch not finalized yet (stop). Farther behind tip → skip and scan forward (gaps happen; do not treat as global stop).
+
 **Do not use** SSE (`/mpp/stream/allTrades`) for this cron skill — different JSON shape, flat session pricing, unnecessary for 5–15 min polling. SSE is for long-lived firehose agents.
 
 See [09-streaming-session.md](https://github.com/powerloom/ai-coord-docs/blob/main/bds-mpp-integration/09-streaming-session.md) — metered per-epoch snapshot is the recommended path.
@@ -70,7 +72,8 @@ See [09-streaming-session.md](https://github.com/powerloom/ai-coord-docs/blob/ma
 | File | Role |
 |------|------|
 | `prefetch-bds.sh` | Wipe `.bds-cache/`, set env, run fetch + processor |
-| `fetch-bds-epochs.py` | Per-block snapshot loop + pool metadata cache |
+| `fetch-bds-epochs.py` | Per-block snapshot loop + pool metadata (rate-limited) |
+| `bds_rate_limit.py` | Shared RPM pacing + 502/429 retries |
 | `bds_normalize.py` | Unwrap snapshot vs legacy SSE-shaped payloads |
 | `process-bds-skill.py` | Whale threshold, dedupe, OpenClaw-style alert text |
 | `postprocess-bds.sh` | Advance cursor from `epoch_range.txt` if processor skipped |
@@ -97,8 +100,11 @@ Inline `#` comments on the same line are supported (processor strips them).
 | Path | Committed? |
 |------|------------|
 | `memory/powerloom-bds-state.json` | Yes — epoch cursor + fingerprints |
+| `memory/powerloom-bds-pool-metadata.json` | Yes — pool token symbols (survives `.bds-cache/` wipe) |
 | `memory/powerloom-bds.yml` | Yes — operator config |
 | `.bds-cache/` | **No** — regenerated every prefetch; add to `.gitignore` |
+
+**Rate limits:** prefetch defaults to `BDS_RATE_LIMIT_RPM=200` (headroom under typical 240/min metering cap). Pool metadata uses `BDS_POOL_METADATA_CONCURRENCY=2` plus the same global limiter. Set env vars in `prefetch-bds.sh` or GitHub Actions if your key differs.
 
 ---
 

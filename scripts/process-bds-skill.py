@@ -24,7 +24,8 @@ STREAM_EVENTS = ROOT / ".bds-cache" / "stream-events.json"
 CONFIG = ROOT / "memory" / "powerloom-bds.yml"
 STATE = ROOT / "memory" / "powerloom-bds-state.json"
 ALERTS = ROOT / ".bds-cache" / "alerts.json"
-POOL_CACHE = ROOT / ".bds-cache" / "pool-metadata.json"
+POOL_CACHE = ROOT / "memory" / "powerloom-bds-pool-metadata.json"
+POOL_CACHE_EPHEMERAL = ROOT / ".bds-cache" / "pool-metadata.json"
 PENDING = ROOT / ".pending-notify"
 ALERT_SEPARATOR = "\n━━━━━━━━━━━━━━━\n\n"
 
@@ -200,10 +201,11 @@ def _load_snapshots() -> list[dict]:
 
 
 def _load_pool_cache() -> dict[str, dict]:
-    if not POOL_CACHE.is_file():
+    path = POOL_CACHE if POOL_CACHE.is_file() else POOL_CACHE_EPHEMERAL
+    if not path.is_file():
         return {}
     try:
-        raw = json.loads(POOL_CACHE.read_text())
+        raw = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
         return {}
     if not isinstance(raw, dict):

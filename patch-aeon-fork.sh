@@ -48,13 +48,31 @@ PY
     echo "OK: BDS_API_KEY already in workflow"
   fi
 
-  if ! grep -q 'memory/powerloom-bds-state.json' "$WORKFLOW"; then
-    sed -i.bak 's/memory\/skill-health\/\* \]\] || \[\[ "\$f" == dashboard/memory\/skill-health\/\* \]\] || \[\[ "\$f" == memory\/powerloom-bds-state.json \]\] || \[\[ "\$f" == dashboard/' "$WORKFLOW"
-    rm -f "$WORKFLOW.bak"
-    echo "Patched auto-commit allowlist for memory/powerloom-bds-state.json"
-  else
-    echo "OK: powerloom-bds-state.json already in commit allowlist"
-  fi
+  python3 - "$WORKFLOW" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = '[[ "$f" == dashboard/outputs/* ]]'
+entries = [
+    "memory/powerloom-bds-state.json",
+    "memory/powerloom-bds-pool-metadata.json",
+]
+if marker not in text:
+    print(f"WARN: commit allowlist marker not found in {path}")
+else:
+    for entry in entries:
+        if entry in text:
+            continue
+        text = text.replace(
+            marker,
+            f'[[ "$f" == {entry} ]] || {marker}',
+            1,
+        )
+        print(f"Patched allowlist: {entry}")
+    path.write_text(text)
+PY
 }
 
 patch_gitignore() {

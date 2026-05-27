@@ -49,6 +49,8 @@ echo "Mode: $MODE"
 STATE_FILE="memory/powerloom-bds-state.json"
 export BDS_BASE_URL="${BDS_BASE_URL:-https://bds.powerloom.io/api}"
 export BDS_MAX_EPOCHS_PER_RUN="${BDS_MAX_EPOCHS_PER_RUN:-100}"
+export BDS_RATE_LIMIT_RPM="${BDS_RATE_LIMIT_RPM:-200}"
+export BDS_POOL_METADATA_CONCURRENCY="${BDS_POOL_METADATA_CONCURRENCY:-2}"
 export FROM_EPOCH=""
 
 if [ -f "$STATE_FILE" ]; then
