@@ -24,13 +24,13 @@ from bds_rate_limit import BdsRateLimiter, DEFAULT_RPM, fetch_throttled  # noqa:
 ROOT = SCRIPT_DIR.parent
 CACHE_DIR = ROOT / ".bds-cache"
 POOL_CACHE_PATH = ROOT / "memory" / "powerloom-bds-pool-metadata.json"
-MAX_EPOCHS = int(os.environ.get("BDS_MAX_EPOCHS_PER_RUN", "50"))
+MAX_EPOCHS = int(os.environ.get("BDS_MAX_EPOCHS_PER_RUN", "10"))
 # Blocks within this distance of BDS tip: 404 means "not finalized yet" — stop catch-up.
 # Farther behind tip: 404 is a gap — skip block and keep scanning forward.
 FINALIZATION_BUFFER = int(os.environ.get("BDS_FINALIZATION_BUFFER", "5"))
 # Upper bound on HTTP attempts per run (successful + skipped 404s).
 MAX_BLOCK_ATTEMPTS = int(
-    os.environ.get("BDS_MAX_BLOCK_ATTEMPTS", str(max(MAX_EPOCHS * 5, 250))),
+    os.environ.get("BDS_MAX_BLOCK_ATTEMPTS", str(max(MAX_EPOCHS * 5, 50))),
 )
 POOL_METADATA_CONCURRENCY = int(os.environ.get("BDS_POOL_METADATA_CONCURRENCY", "2"))
 
