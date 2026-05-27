@@ -9,7 +9,7 @@ Canonical **skill package** for [Aeon](https://github.com/aaronjmars/aeon). Publ
 Whale Radar on Aeon is not “an LLM that polls Uniswap.” It is:
 
 1. **Verified block data** — trades and USD amounts from BDS epoch snapshots; alerts include on-chain verification (CID, epoch) when present.
-2. **Deterministic catch-up** — `fetch-bds-epochs.py` walks `GET /mpp/snapshot/allTrades/{block}` from cursor+1 to chain tip (up to 100 blocks/run). No tip-only sampling, no ignored `from_epoch` query hacks.
+2. **Deterministic catch-up** — `fetch-bds-epochs.py` walks `GET /mpp/snapshot/allTrades/{block}` from cursor+1 to chain tip (up to **50** snapshots/run). No tip-only sampling, no ignored `from_epoch` query hacks.
 3. **OpenClaw parity, headless runtime** — same whale logic as `powerloom-bds-univ3/scripts/whale-cron.mjs`, but split for GitHub Actions: prefetch owns fetch + cursor; Claude only dispatches `./notify`.
 4. **Rich, Telegram-safe alerts** — pool metadata (USDC/WETH), BUY/SELL, Etherscan links; project slug only in verification footer.
 5. **Cheap agent step** — skill reads pre-built `.bds-cache/alerts.json`; no sandbox network, no LLM rewriting `powerloom-bds-state.json`.

@@ -115,7 +115,7 @@ Fetched N snapshot(s): A - B
 process-bds-skill: epochs=N trades=T alerts=A cursor=B
 ```
 
-First run with no cursor fetches **latest finalized epoch only**. Subsequent runs catch up block-by-block (max 100/run).
+First run with no cursor fetches **latest finalized epoch only**. Subsequent runs catch up block-by-block (max **50**/run; override with `BDS_MAX_EPOCHS_PER_RUN`).
 
 Silent skill runs (`no alerts`) are normal when no swap exceeds your threshold.
 
