@@ -18,12 +18,12 @@ Get your API key at https://bds-metering.powerloom.io/metering
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /mpp/snapshot/allTrades` | Latest trades across all pools (no path param) |
-| `GET /mpp/snapshot/allTrades/{epoch}` | Trades for specific epoch (integer block number) |
+| `GET /mpp/snapshot/allTrades` | Latest finalized epoch only (no `from_epoch` query) |
+| `GET /mpp/snapshot/allTrades/{epoch}` | **Use this for catch-up** — one block per request |
 | `GET /mpp/snapshot/trades/{pool}` | Trades for specific pool |
-| `GET /mpp/stream/allTrades` | SSE stream of all trades |
+| `GET /mpp/stream/allTrades` | SSE firehose — not used by Aeon whale-radar skill |
 
-**Note**: Use `/mpp/snapshot/allTrades` without any path parameter for latest. The `{block_number}` variant requires an integer epoch, not "latest".
+**Aeon whale-radar:** loop `{epoch}` from `lastStreamEpoch+1` via `scripts/fetch-bds-epochs.py`. Do not pass `from_epoch` on bare snapshot GET.
 
 ### Token Data
 
@@ -52,14 +52,16 @@ Get your API key at https://bds-metering.powerloom.io/metering
 
 ```json
 {
-  "epoch": 24785842,
-  "data": [...],
+  "epoch": { "begin": 24785842, "end": 24785842 },
+  "tradeData": {
+    "0xPoolAddress": {
+      "trades": [ { "tradeType": "Swap", "data": { "calculated_trade_amount_usd": "1234.56" }, "log": { ... } } ]
+    }
+  },
   "verification": {
     "cid": "bafkrei...",
-    "epoch": 24785842,
-    "projectId": "allTradesSnapshot:0x26c4...",
-    "dataMarket": "0x26c44e5CcEB7Fe69Cffc933838CF40286b2dc01a",
-    "protocolState": "0x1d0e010Ff11b781CA1dE34BD25a0037203e25E2a"
+    "epochId": 24785842,
+    "projectId": "allTradesSnapshot:0x4198...:mainnet-..."
   }
 }
 ```
