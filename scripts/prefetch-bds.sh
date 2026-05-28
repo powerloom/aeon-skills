@@ -51,18 +51,16 @@ export BDS_BASE_URL="${BDS_BASE_URL:-https://bds.powerloom.io/api}"
 export BDS_MAX_EPOCHS_PER_RUN="${BDS_MAX_EPOCHS_PER_RUN:-10}"
 export BDS_RATE_LIMIT_RPM="${BDS_RATE_LIMIT_RPM:-200}"
 export BDS_POOL_METADATA_CONCURRENCY="${BDS_POOL_METADATA_CONCURRENCY:-2}"
-export FROM_EPOCH=""
 
 if [ -f "$STATE_FILE" ]; then
     LAST_EPOCH=$(python3 -c "import json; d=json.load(open('$STATE_FILE')); print(d.get('lastStreamEpoch', '') or '')" 2>/dev/null || echo "")
     if [ -n "$LAST_EPOCH" ] && [ "$LAST_EPOCH" != "null" ] && [ "$LAST_EPOCH" != "None" ]; then
-        export FROM_EPOCH=$((LAST_EPOCH + 1))
-        echo "Cursor lastStreamEpoch=$LAST_EPOCH → fetch from block $FROM_EPOCH"
+        echo "Cursor lastStreamEpoch=$LAST_EPOCH (fetch window chosen in fetch-bds-epochs.py)"
+    else
+        echo "No cursor in state — will fetch last N epochs near tip"
     fi
-fi
-
-if [ -z "$FROM_EPOCH" ]; then
-    echo "No cursor — will fetch latest finalized epoch only"
+else
+    echo "No state file — will fetch last N epochs near tip"
 fi
 
 python3 scripts/fetch-bds-epochs.py

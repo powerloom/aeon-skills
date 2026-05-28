@@ -23,6 +23,7 @@ from bds_rate_limit import BdsRateLimiter, DEFAULT_RPM, fetch_throttled  # noqa:
 
 ROOT = SCRIPT_DIR.parent
 CACHE_DIR = ROOT / ".bds-cache"
+STATE_FILE = ROOT / "memory" / "powerloom-bds-state.json"
 POOL_CACHE_PATH = ROOT / "memory" / "powerloom-bds-pool-metadata.json"
 MAX_EPOCHS = int(os.environ.get("BDS_MAX_EPOCHS_PER_RUN", "10"))
 # Blocks within this distance of BDS tip: 404 means "not finalized yet" — stop catch-up.
@@ -33,6 +34,53 @@ MAX_BLOCK_ATTEMPTS = int(
     os.environ.get("BDS_MAX_BLOCK_ATTEMPTS", str(max(MAX_EPOCHS * 5, 50))),
 )
 POOL_METADATA_CONCURRENCY = int(os.environ.get("BDS_POOL_METADATA_CONCURRENCY", "2"))
+
+
+def _load_cursor() -> int | None:
+    """lastStreamEpoch from committed state (None = first run)."""
+    if not STATE_FILE.is_file():
+        return None
+    try:
+        data = json.loads(STATE_FILE.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    raw = data.get("lastStreamEpoch")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_start_block(cursor: int | None, tip: int) -> tuple[int, str]:
+    """
+    Whale-radar window selection.
+
+    - No cursor or cursor lag > MAX_EPOCHS: fetch last MAX_EPOCHS blocks near tip.
+    - Otherwise: incremental from cursor+1 (normal steady-state).
+    """
+    tip_window_start = max(1, tip - MAX_EPOCHS + 1)
+
+    if cursor is None:
+        return tip_window_start, (
+            f"No cursor — fetching last {MAX_EPOCHS} epoch(s) near tip "
+            f"({tip_window_start} → {tip})"
+        )
+
+    lag = tip - cursor
+    if lag > MAX_EPOCHS:
+        return tip_window_start, (
+            f"Cursor stale (lag {lag} blocks, max {MAX_EPOCHS}/run) — "
+            f"fetching last {MAX_EPOCHS} epoch(s) near tip ({tip_window_start} → {tip})"
+        )
+
+    start = cursor + 1
+    if start > tip:
+        return start, f"Already caught up (cursor {cursor} >= tip {tip})"
+    return start, f"Incremental: {start} → {tip} (max {MAX_EPOCHS} snapshot(s))"
 
 
 def _load_pool_cache() -> dict[str, dict]:
@@ -172,7 +220,11 @@ async def main() -> int:
         return 1
 
     from_epoch_raw = os.environ.get("FROM_EPOCH", "").strip()
-    start_epoch = int(from_epoch_raw) if from_epoch_raw else None
+    # Legacy env override (tests); normal runs use memory/powerloom-bds-state.json.
+    env_start = int(from_epoch_raw) if from_epoch_raw else None
+    cursor = _load_cursor()
+    if env_start is not None:
+        cursor = env_start - 1
 
     limiter = BdsRateLimiter(DEFAULT_RPM)
     print(f"BDS rate limit: {DEFAULT_RPM} req/min (set BDS_RATE_LIMIT_RPM to match your key)")
@@ -182,14 +234,12 @@ async def main() -> int:
         print("ERROR: could not resolve latest finalized epoch")
         return 1
 
-    if start_epoch is None:
-        start_epoch = tip
-        print(f"No cursor — fetching latest epoch {tip}")
-    else:
-        print(f"Catch-up: epochs {start_epoch} → {tip} (max {MAX_EPOCHS} per run)")
+    if cursor is not None:
+        print(f"Cursor lastStreamEpoch={cursor}")
 
+    start_epoch, plan = _resolve_start_block(cursor, tip)
+    print(plan)
     if start_epoch > tip:
-        print(f"Already caught up (cursor ahead of tip: {start_epoch - 1} >= {tip})")
         snapshots: list[dict] = []
     else:
         snapshots = []

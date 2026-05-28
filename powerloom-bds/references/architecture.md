@@ -33,7 +33,7 @@ memory/powerloom-bds-state.json     lastStreamEpoch cursor (committed to git)
            │
            ▼
 scripts/fetch-bds-epochs.py         GET /mpp/snapshot/allTrades/{block} loop
-           │                         from lastStreamEpoch+1 → tip (max 10/run)
+           │                         tip window or incremental (see fetch-bds-epochs.py)
            ▼
 .bds-cache/stream-events.json       array of normalized snapshots
            │
